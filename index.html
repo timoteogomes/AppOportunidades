@@ -17,7 +17,7 @@
   <script type="text/babel">
     const { useState } = React;
 
-    // Componente Card
+    // Componente Card (simulação do componente importado)
     function Card({ children, className = "" }) {
       return (
         <div className={`border rounded shadow p-4 ${className}`}>
@@ -29,7 +29,7 @@
     // Componente CardContent
     function CardContent({ children, className = "" }) {
       return (
-        <div className={`flex justify-between items-center ${className}`}>
+        <div className={`flex flex-col gap-2 ${className}`}>
           {children}
         </div>
       );
@@ -44,18 +44,23 @@
       );
     }
 
-    // Componente Select (usando elemento nativo <select>)
-    function Select({ onValueChange, value, placeholder, children, className = "" }) {
+    // Componente Select e seus subcomponentes (utilizando o elemento nativo <select>)
+    function Select({ onValueChange, value, children, className = "", placeholder }) {
       return (
         <select 
           onChange={(e) => onValueChange(e.target.value)} 
-          value={value} 
+          value={value}
           className={`border rounded p-2 ${className}`}
         >
           {(!value || value === "") && <option value="">{placeholder}</option>}
           {children}
         </select>
       );
+    }
+
+    // Para manter a estrutura original, criamos o SelectItem como um wrapper do <option>
+    function SelectItem({ children, value }) {
+      return <option value={value}>{children}</option>;
     }
 
     // Componente principal
@@ -71,23 +76,29 @@
         "PROATI",
         "União de Adolescentes"
       ]);
-      
+
       const [positions, setPositions] = useState([
-        { id: 1, name: "1° Órgão a cantar", group: "" },
-        { id: 2, name: "2° Órgão a cantar", group: "" },
-        { id: 3, name: "3° Órgão a cantar", group: "" },
-        { id: 4, name: "4° Órgão a cantar", group: "" },
-        { id: 5, name: "5° Órgão a cantar", group: "" },
-        { id: 6, name: "6° Órgão a cantar", group: "" },
-        { id: 7, name: "7° Órgão a cantar", group: "" },
-        { id: 8, name: "8° Órgão a cantar", group: "" },
-        { id: 9, name: "9° Órgão a cantar", group: "" },
-        { id: 10, name: "10° Órgão a cantar", group: "" },
+        { id: 1, name: "1° Órgão a cantar", group: "", comment: "" },
+        { id: 2, name: "2° Órgão a cantar", group: "", comment: "" },
+        { id: 3, name: "3° Órgão a cantar", group: "", comment: "" },
+        { id: 4, name: "4° Órgão a cantar", group: "", comment: "" },
+        { id: 5, name: "5° Órgão a cantar", group: "", comment: "" },
+        { id: 6, name: "6° Órgão a cantar", group: "", comment: "" },
+        { id: 7, name: "7° Órgão a cantar", group: "", comment: "" },
+        { id: 8, name: "8° Órgão a cantar", group: "", comment: "" },
+        { id: 9, name: "9° Órgão a cantar", group: "", comment: "" },
+        { id: 10, name: "10° Órgão a cantar", group: "", comment: "" },
       ]);
 
       const updatePosition = (id, group) => {
         setPositions(
           positions.map((pos) => (pos.id === id ? { ...pos, group } : pos))
+        );
+      };
+
+      const updateComment = (id, comment) => {
+        setPositions(
+          positions.map((pos) => (pos.id === id ? { ...pos, comment } : pos))
         );
       };
 
@@ -98,17 +109,28 @@
           {positions.map((position) => (
             <Card key={position.id}>
               <CardContent>
-                <span>{position.name}</span>
-                <Select 
-                  onValueChange={(value) => updatePosition(position.id, value)}
-                  value={position.group}
-                  placeholder={position.group || "Selecione um grupo"}
-                  className="w-48"
-                >
-                  {groups.map((group, index) => (
-                    <option key={index} value={group}>{group}</option>
-                  ))}
-                </Select>
+                <div className="flex justify-between items-center">
+                  <span>{position.name}</span>
+                  <Select 
+                    onValueChange={(value) => updatePosition(position.id, value)}
+                    value={position.group}
+                    className="w-48"
+                    placeholder="Selecione um grupo"
+                  >
+                    {groups.map((group, index) => (
+                      <SelectItem key={index} value={group}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+                {/* Campo de comentários */}
+                <textarea
+                  className="w-full p-2 border rounded"
+                  placeholder="Adicione um comentário..."
+                  value={position.comment}
+                  onChange={(e) => updateComment(position.id, e.target.value)}
+                />
               </CardContent>
             </Card>
           ))}
