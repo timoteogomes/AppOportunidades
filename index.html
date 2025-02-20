@@ -11,11 +11,28 @@
   <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
   <!-- Babel para compilar JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Firebase SDK (versão compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
+
+    // Configuração do Firebase (substitua pelos dados do seu projeto)
+    const firebaseConfig = {
+        apiKey : "AIzaSyBso2GD9L1JmGOxzoxJ7rGq2ZMmR-YzKck" , 
+        authDomain : "appoportunidades-a8319.firebaseapp.com" , 
+        projectId : "apostas-a8319" , 
+        storageBucket : "appoportunidades-a8319.firebasestorage.app" , 
+        messagingSenderId : "776312708243" , 
+        appId : "1:776312708243:web:602aa62547596dd79f8166" , 
+    };
+
+    // Inicializa o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     // Componente Card
     function Card({ children, className = "" }) {
@@ -29,7 +46,7 @@
     // Componente CardContent
     function CardContent({ children, className = "" }) {
       return (
-        <div className={`flex justify-between items-center ${className}`}>
+        <div className={`flex flex-col gap-2 ${className}`}>
           {children}
         </div>
       );
@@ -44,7 +61,7 @@
       );
     }
 
-    // Componente Select (usando elemento nativo <select>)
+    // Componente Select (utilizando elemento nativo <select>)
     function Select({ onValueChange, value, placeholder, children, className = "" }) {
       return (
         <select 
@@ -60,6 +77,7 @@
 
     // Componente principal
     function WorshipManagementApp() {
+      // Grupos fixos
       const [groups] = useState([
         "Campanha Evangelizadora",
         "COI",
@@ -72,6 +90,7 @@
         "União de Adolescentes"
       ]);
       
+      // Estado inicial com as oportunidades
       const [positions, setPositions] = useState([
         { id: 1, name: "1° Órgão a cantar", group: "", comment: "" },
         { id: 2, name: "2° Órgão a cantar", group: "", comment: "" },
@@ -85,41 +104,49 @@
         { id: 10, name: "10° Órgão a cantar", group: "", comment: "" },
       ]);
 
+      // Inscreve-se em tempo real na coleção "opportunities" do Firestore
+      useEffect(() => {
+        const unsubscribe = db.collection("opportunities")
+          .onSnapshot((snapshot) => {
+            const positionsFromDB = [];
+            snapshot.forEach((doc) => {
+              positionsFromDB.push(doc.data());
+            });
+            positionsFromDB.sort((a, b) => a.id - b.id);
+            setPositions(positionsFromDB);
+          }, (error) => {
+            console.error("Erro ao obter dados: ", error);
+          });
+        return () => unsubscribe();
+      }, []);
+
+      // Atualiza o grupo de uma oportunidade no estado local
       const updatePosition = (id, group) => {
         setPositions(
           positions.map((pos) => (pos.id === id ? { ...pos, group } : pos))
         );
       };
 
+      // Atualiza o comentário de uma oportunidade no estado local
       const updateComment = (id, comment) => {
         setPositions(
           positions.map((pos) => (pos.id === id ? { ...pos, comment } : pos))
         );
       };
 
-      // Função para enviar os dados para o banco de dados via API
-      const handleSubmit = () => {
-        // Substitua a URL abaixo pelo endpoint real da sua API
-        fetch("https://appoportunidade.netlify.app/.netlify/functions/saveData", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ positions })
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error("Erro ao salvar dados");
+      // Função para enviar os dados para o Firestore
+      const handleSubmit = async () => {
+        try {
+          for (const pos of positions) {
+            await db.collection("opportunities")
+              .doc(String(pos.id))
+              .set(pos, { merge: true });
           }
-          return response.json();
-        })
-        .then(data => {
-          alert("Dados salvos com sucesso!");
-        })
-        .catch(error => {
-          alert("Erro ao salvar dados!");
-          console.error(error);
-        });
+          alert("Dados enviados com sucesso!");
+        } catch (error) {
+          console.error("Erro ao enviar dados: ", error);
+          alert("Erro ao enviar dados!");
+        }
       };
 
       return (
@@ -129,27 +156,27 @@
           {positions.map((position) => (
             <Card key={position.id}>
               <CardContent>
-                <span>{position.name}</span>
-                <Select 
-                  onValueChange={(value) => updatePosition(position.id, value)}
-                  value={position.group}
-                  placeholder="Selecione um grupo"
-                  className="w-48"
-                >
-                  {groups.map((group, index) => (
-                    <option key={index} value={group}>{group}</option>
-                  ))}
-                </Select>
-              </CardContent>
-              {/* Campo de comentários */}
-              <div className="mt-2">
+                <div className="flex justify-between items-center">
+                  <span>{position.name}</span>
+                  <Select 
+                    onValueChange={(value) => updatePosition(position.id, value)}
+                    value={position.group}
+                    placeholder="Selecione um grupo"
+                    className="w-48"
+                  >
+                    {groups.map((group, index) => (
+                      <option key={index} value={group}>{group}</option>
+                    ))}
+                  </Select>
+                </div>
+                {/* Campo de comentários */}
                 <textarea
                   className="w-full p-2 border rounded"
                   placeholder="Adicione um comentário..."
                   value={position.comment}
                   onChange={(e) => updateComment(position.id, e.target.value)}
                 />
-              </div>
+              </CardContent>
             </Card>
           ))}
           
