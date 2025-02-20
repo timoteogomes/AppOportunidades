@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worship Management App</title>
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- React e ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <!-- Babel para compilar JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Firebase SDK (versão compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Configuração do Firebase (substitua pelos dados do seu projeto)
+    const firebaseConfig = {
+        apiKey : "AIzaSyBso2GD9L1JmGOxzoxJ7rGq2ZMmR-YzKck" , 
+        authDomain : "appoportunidades-a8319.firebaseapp.com" , 
+        projectId : "apostas-a8319" , 
+        storageBucket : "appoportunidades-a8319.firebasestorage.app" , 
+        messagingSenderId : "776312708243" , 
+        appId : "1:776312708243:web:602aa62547596dd79f8166" , 
+    };
+
+    // Inicializa o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Componente Card
+    function Card({ children, className = "" }) {
+      return (
+        <div className={`border rounded shadow p-4 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    // Componente CardContent
+    function CardContent({ children, className = "" }) {
+      return (
+        <div className={`flex flex-col gap-2 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    // Componente Button
+    function Button({ onClick, children, className = "" }) {
+      return (
+        <button onClick={onClick} className={`bg-blue-500 text-white px-4 py-2 rounded ${className}`}>
+          {children}
+        </button>
+      );
+    }
+
+    // Componente Select (utilizando elemento nativo <select>)
+    function Select({ onValueChange, value, placeholder, children, className = "" }) {
+      return (
+        <select 
+          onChange={(e) => onValueChange(e.target.value)} 
+          value={value} 
+          className={`border rounded p-2 ${className}`}
+        >
+          {(!value || value === "") && <option value="">{placeholder}</option>}
+          {children}
+        </select>
+      );
+    }
+
+    // Componente principal
+    function WorshipManagementApp() {
+      // Grupos fixos
+      const [groups] = useState([
+        "Campanha Evangelizadora",
+        "COI",
+        "Comissão",
+        "Conjunto Musical",
+        "Coral",
+        "Coro Jovem",
+        "Instrumental Shamah",
+        "PROATI",
+        "União de Adolescentes"
+      ]);
+      
+      // Estado inicial com as oportunidades
+      const [positions, setPositions] = useState([
+        { id: 1, name: "1° Órgão a cantar", group: "", comment: "" },
+        { id: 2, name: "2° Órgão a cantar", group: "", comment: "" },
+        { id: 3, name: "3° Órgão a cantar", group: "", comment: "" },
+        { id: 4, name: "4° Órgão a cantar", group: "", comment: "" },
+        { id: 5, name: "5° Órgão a cantar", group: "", comment: "" },
+        { id: 6, name: "6° Órgão a cantar", group: "", comment: "" },
+        { id: 7, name: "7° Órgão a cantar", group: "", comment: "" },
+        { id: 8, name: "8° Órgão a cantar", group: "", comment: "" },
+        { id: 9, name: "9° Órgão a cantar", group: "", comment: "" },
+        { id: 10, name: "10° Órgão a cantar", group: "", comment: "" },
+      ]);
+
+      // Inscreve-se em tempo real na coleção "opportunities" do Firestore
+      useEffect(() => {
+        const unsubscribe = db.collection("opportunities")
+          .onSnapshot((snapshot) => {
+            const positionsFromDB = [];
+            snapshot.forEach((doc) => {
+              positionsFromDB.push(doc.data());
+            });
+            positionsFromDB.sort((a, b) => a.id - b.id);
+            setPositions(positionsFromDB);
+          }, (error) => {
+            console.error("Erro ao obter dados: ", error);
+          });
+        return () => unsubscribe();
+      }, []);
+
+      // Atualiza o grupo de uma oportunidade no estado local
+      const updatePosition = (id, group) => {
+        setPositions(
+          positions.map((pos) => (pos.id === id ? { ...pos, group } : pos))
+        );
+      };
+
+      // Atualiza o comentário de uma oportunidade no estado local
+      const updateComment = (id, comment) => {
+        setPositions(
+          positions.map((pos) => (pos.id === id ? { ...pos, comment } : pos))
+        );
+      };
+
+      // Função para enviar os dados para o Firestore
+      const handleSubmit = async () => {
+        try {
+          for (const pos of positions) {
+            await db.collection("opportunities")
+              .doc(String(pos.id))
+              .set(pos, { merge: true });
+          }
+          alert("Dados enviados com sucesso!");
+        } catch (error) {
+          console.error("Erro ao enviar dados: ", error);
+          alert("Erro ao enviar dados!");
+        }
+      };
+
+      return (
+        <div className="p-4 space-y-4">
+          <h1 className="text-xl font-bold">Gerenciamento de Oportunidades</h1>
+          
+          {positions.map((position) => (
+            <Card key={position.id}>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <span>{position.name}</span>
+                  <Select 
+                    onValueChange={(value) => updatePosition(position.id, value)}
+                    value={position.group}
+                    placeholder="Selecione um grupo"
+                    className="w-48"
+                  >
+                    {groups.map((group, index) => (
+                      <option key={index} value={group}>{group}</option>
+                    ))}
+                  </Select>
+                </div>
+                {/* Campo de comentários */}
+                <textarea
+                  className="w-full p-2 border rounded"
+                  placeholder="Adicione um comentário..."
+                  value={position.comment}
+                  onChange={(e) => updateComment(position.id, e.target.value)}
+                />
+              </CardContent>
+            </Card>
+          ))}
+          
+          <Button onClick={handleSubmit}>
+            Enviar
+          </Button>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<WorshipManagementApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
