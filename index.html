@@ -17,7 +17,7 @@
   <script type="text/babel">
     const { useState } = React;
 
-    // Componente Card (simulação do componente importado)
+    // Componente Card
     function Card({ children, className = "" }) {
       return (
         <div className={`border rounded shadow p-4 ${className}`}>
@@ -29,7 +29,7 @@
     // Componente CardContent
     function CardContent({ children, className = "" }) {
       return (
-        <div className={`flex flex-col gap-2 ${className}`}>
+        <div className={`flex justify-between items-center ${className}`}>
           {children}
         </div>
       );
@@ -44,12 +44,12 @@
       );
     }
 
-    // Componente Select e seus subcomponentes (utilizando o elemento nativo <select>)
-    function Select({ onValueChange, value, children, className = "", placeholder }) {
+    // Componente Select (usando elemento nativo <select>)
+    function Select({ onValueChange, value, placeholder, children, className = "" }) {
       return (
         <select 
           onChange={(e) => onValueChange(e.target.value)} 
-          value={value}
+          value={value} 
           className={`border rounded p-2 ${className}`}
         >
           {(!value || value === "") && <option value="">{placeholder}</option>}
@@ -58,14 +58,9 @@
       );
     }
 
-    // Para manter a estrutura original, criamos o SelectItem como um wrapper do <option>
-    function SelectItem({ children, value }) {
-      return <option value={value}>{children}</option>;
-    }
-
     // Componente principal
     function WorshipManagementApp() {
-      const [groups, setGroups] = useState([
+      const [groups] = useState([
         "Campanha Evangelizadora",
         "COI",
         "Comissão",
@@ -76,7 +71,7 @@
         "PROATI",
         "União de Adolescentes"
       ]);
-
+      
       const [positions, setPositions] = useState([
         { id: 1, name: "1° Órgão a cantar", group: "", comment: "" },
         { id: 2, name: "2° Órgão a cantar", group: "", comment: "" },
@@ -102,6 +97,31 @@
         );
       };
 
+      // Função para enviar os dados para o banco de dados via API
+      const handleSubmit = () => {
+        // Substitua a URL abaixo pelo endpoint real da sua API
+        fetch("https://example.com/api/saveData", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ positions })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Erro ao salvar dados");
+          }
+          return response.json();
+        })
+        .then(data => {
+          alert("Dados salvos com sucesso!");
+        })
+        .catch(error => {
+          alert("Erro ao salvar dados!");
+          console.error(error);
+        });
+      };
+
       return (
         <div className="p-4 space-y-4">
           <h1 className="text-xl font-bold">Gerenciamento de Oportunidades</h1>
@@ -109,34 +129,32 @@
           {positions.map((position) => (
             <Card key={position.id}>
               <CardContent>
-                <div className="flex justify-between items-center">
-                  <span>{position.name}</span>
-                  <Select 
-                    onValueChange={(value) => updatePosition(position.id, value)}
-                    value={position.group}
-                    className="w-48"
-                    placeholder="Selecione um grupo"
-                  >
-                    {groups.map((group, index) => (
-                      <SelectItem key={index} value={group}>
-                        {group}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </div>
-                {/* Campo de comentários */}
+                <span>{position.name}</span>
+                <Select 
+                  onValueChange={(value) => updatePosition(position.id, value)}
+                  value={position.group}
+                  placeholder="Selecione um grupo"
+                  className="w-48"
+                >
+                  {groups.map((group, index) => (
+                    <option key={index} value={group}>{group}</option>
+                  ))}
+                </Select>
+              </CardContent>
+              {/* Campo de comentários */}
+              <div className="mt-2">
                 <textarea
                   className="w-full p-2 border rounded"
                   placeholder="Adicione um comentário..."
                   value={position.comment}
                   onChange={(e) => updateComment(position.id, e.target.value)}
                 />
-              </CardContent>
+              </div>
             </Card>
           ))}
           
-          <Button onClick={() => setGroups([...groups, `Grupo ${String.fromCharCode(65 + groups.length)}`])}>
-            Adicionar Grupo de Louvor
+          <Button onClick={handleSubmit}>
+            Enviar
           </Button>
         </div>
       );
