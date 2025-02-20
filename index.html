@@ -6,21 +6,21 @@
   <title>Worship Management App</title>
   <!-- Tailwind CSS -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Firebase App e Firestore (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <!-- React e ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
   <!-- Babel para compilar JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Firebase SDK (versão compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Configuração do Firebase (substitua pelos dados do seu projeto)
+    // Configuração do Firebase – substitua pelos dados do seu projeto
     const firebaseConfig = {
         apiKey : "AIzaSyBso2GD9L1JmGOxzoxJ7rGq2ZMmR-YzKck" , 
         authDomain : "appoportunidades-a8319.firebaseapp.com" , 
@@ -28,8 +28,8 @@
         storageBucket : "appoportunidades-a8319.firebasestorage.app" , 
         messagingSenderId : "776312708243" , 
         appId : "1:776312708243:web:602aa62547596dd79f8166" , 
+      // ... outras configurações, se necessário
     };
-
     // Inicializa o Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -61,12 +61,12 @@
       );
     }
 
-    // Componente Select (utilizando elemento nativo <select>)
+    // Componente Select (utilizando o elemento nativo <select>)
     function Select({ onValueChange, value, placeholder, children, className = "" }) {
       return (
         <select 
           onChange={(e) => onValueChange(e.target.value)} 
-          value={value} 
+          value={value}
           className={`border rounded p-2 ${className}`}
         >
           {(!value || value === "") && <option value="">{placeholder}</option>}
@@ -77,7 +77,7 @@
 
     // Componente principal
     function WorshipManagementApp() {
-      // Grupos fixos
+      // Lista fixa de grupos (não editável no formulário)
       const [groups] = useState([
         "Campanha Evangelizadora",
         "COI",
@@ -89,8 +89,8 @@
         "PROATI",
         "União de Adolescentes"
       ]);
-      
-      // Estado inicial com as oportunidades
+
+      // Estado inicial das oportunidades
       const [positions, setPositions] = useState([
         { id: 1, name: "1° Órgão a cantar", group: "", comment: "" },
         { id: 2, name: "2° Órgão a cantar", group: "", comment: "" },
@@ -104,55 +104,53 @@
         { id: 10, name: "10° Órgão a cantar", group: "", comment: "" },
       ]);
 
-      // Inscreve-se em tempo real na coleção "opportunities" do Firestore
-      useEffect(() => {
-        const unsubscribe = db.collection("opportunities")
-          .onSnapshot((snapshot) => {
-            const positionsFromDB = [];
-            snapshot.forEach((doc) => {
-              positionsFromDB.push(doc.data());
-            });
-            positionsFromDB.sort((a, b) => a.id - b.id);
-            setPositions(positionsFromDB);
-          }, (error) => {
-            console.error("Erro ao obter dados: ", error);
-          });
-        return () => unsubscribe();
-      }, []);
+      // Estado para armazenar as submissões vindas do banco de dados
+      const [submissions, setSubmissions] = useState([]);
 
-      // Atualiza o grupo de uma oportunidade no estado local
+      // Atualiza o grupo selecionado para cada oportunidade
       const updatePosition = (id, group) => {
         setPositions(
           positions.map((pos) => (pos.id === id ? { ...pos, group } : pos))
         );
       };
 
-      // Atualiza o comentário de uma oportunidade no estado local
+      // Atualiza o comentário para cada oportunidade
       const updateComment = (id, comment) => {
         setPositions(
           positions.map((pos) => (pos.id === id ? { ...pos, comment } : pos))
         );
       };
 
-      // Função para enviar os dados para o Firestore
+      // Listener para atualizações em tempo real da coleção "submissions"
+      useEffect(() => {
+        const unsubscribe = db.collection("submissions")
+          .orderBy("createdAt", "desc")
+          .onSnapshot((snapshot) => {
+            const subs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setSubmissions(subs);
+          });
+        return () => unsubscribe();
+      }, []);
+
+      // Função para enviar os dados para o banco de dados
       const handleSubmit = async () => {
         try {
-          for (const pos of positions) {
-            await db.collection("opportunities")
-              .doc(String(pos.id))
-              .set(pos, { merge: true });
-          }
-          alert("Dados enviados com sucesso!");
+          await db.collection("submissions").add({
+            positions,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          // Opcional: Limpar os campos após o envio
+          setPositions(positions.map(pos => ({ ...pos, group: "", comment: "" })));
         } catch (error) {
-          console.error("Erro ao enviar dados: ", error);
-          alert("Erro ao enviar dados!");
+          console.error("Erro ao enviar os dados: ", error);
         }
       };
 
       return (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-8">
           <h1 className="text-xl font-bold">Gerenciamento de Oportunidades</h1>
           
+          {/* Formulário de lançamento */}
           {positions.map((position) => (
             <Card key={position.id}>
               <CardContent>
@@ -171,7 +169,7 @@
                 </div>
                 {/* Campo de comentários */}
                 <textarea
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded mt-2"
                   placeholder="Adicione um comentário..."
                   value={position.comment}
                   onChange={(e) => updateComment(position.id, e.target.value)}
@@ -183,6 +181,28 @@
           <Button onClick={handleSubmit}>
             Enviar
           </Button>
+
+          {/* Exibição das submissões */}
+          <div>
+            <h2 className="text-lg font-bold mt-8">Submissões</h2>
+            {submissions.map((sub) => (
+              <Card key={sub.id} className="mt-4">
+                <CardContent>
+                  <div className="text-sm text-gray-600">
+                    {sub.createdAt 
+                      ? new Date(sub.createdAt.seconds * 1000).toLocaleString() 
+                      : "Enviando..."}
+                  </div>
+                  {sub.positions.map((pos, idx) => (
+                    <div key={idx} className="border-b py-2">
+                      <strong>{pos.name}:</strong> Grupo: {pos.group || "N/A"}<br />
+                      <span>Comentário: {pos.comment || "N/A"}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       );
     }
